@@ -35,8 +35,20 @@ export const useBudgetChat = () => {
         items: [{ productName: text, quantity: 0 }], // Guardamos temporalmente
         step: "client_data", // Avanzamos (simplificado)
       }));
+    } else if (draft.step === "client_data") {
+      botResponseText = `Perfecto, he registrado tu interés en ${draft.items[0].productName}. ¿Podrías proporcionarme tu nombre y correo electrónico para completar la cotización?`;
+      setDraft((prev) => ({ ...prev, step: "confirmation" }));
+    } else if (draft.step === "confirmation") {
+      botResponseText = `Gracias por la información. ¿Deseas que te envíe la cotización a tu correo electrónico?`;
+      setDraft((prev) => ({
+        ...prev,
+        step: "finished",
+        isReadyToSubmit: true,
+      }));
+    } else {
+      botResponseText = `¡Gracias por usar nuestro servicio de cotizaciones! Hemos registrado tu solicitud.`;
+      setDraft((prev) => ({ ...prev, step: "finished" }));
     }
-    // ... más lógica
 
     // 3. Responder
     setTimeout(() => {
