@@ -2,9 +2,19 @@ import { useState } from "react";
 import type { BudgetDraft, ChatMessage } from "../types/budget";
 
 export const useBudgetChat = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Inicializamos con un saludo del Bot para mejorar la UX
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "init-1",
+      sender: "bot",
+      text: "¡Hola! Soy tu asistente de presupuestos. Escribe 'Hola' para comenzar o dime qué necesitas.",
+    },
+  ]);
+
+  const [isLoading, setIsLoading] = useState(false);
+
   const [draft, setDraft] = useState<BudgetDraft>({
-    step: "greeting",
+    step: "greeting", // El paso inicial
     items: [],
     clientInfo: {},
     isReadyToSubmit: false,
@@ -20,38 +30,42 @@ export const useBudgetChat = () => {
     };
     setMessages((prev) => [...prev, userMsg]);
 
-    // 2. Lógica de procesamiento (Aquí iría la llamada a OpenAI o tu lógica switch/case)
-    // SIMULACIÓN DE IA:
+    // IMPORTANTE: Activar estado de carga
+    setIsLoading(true);
+
+    // 2. Lógica de procesamiento
+    // (Tu lógica original se mantiene igual, solo he añadido el manejo de isLoading)
     let botResponseText = "";
 
-    if (draft.step === "greeting") {
-      botResponseText = "¡Hola! ¿Qué producto te interesa cotizar hoy?";
-      setDraft((prev) => ({ ...prev, step: "product_selection" }));
-    } else if (draft.step === "product_selection") {
-      // Aquí "extraeríamos" la info del texto
-      botResponseText = `Entendido, anoto ${text}. ¿Cuántas unidades necesitas?`;
-      setDraft((prev) => ({
-        ...prev,
-        items: [{ productName: text, quantity: 0 }], // Guardamos temporalmente
-        step: "client_data", // Avanzamos (simplificado)
-      }));
-    } else if (draft.step === "client_data") {
-      botResponseText = `Perfecto, he registrado tu interés en ${draft.items[0].productName}. ¿Podrías proporcionarme tu nombre y correo electrónico para completar la cotización?`;
-      setDraft((prev) => ({ ...prev, step: "confirmation" }));
-    } else if (draft.step === "confirmation") {
-      botResponseText = `Gracias por la información. ¿Deseas que te envíe la cotización a tu correo electrónico?`;
-      setDraft((prev) => ({
-        ...prev,
-        step: "finished",
-        isReadyToSubmit: true,
-      }));
-    } else {
-      botResponseText = `¡Gracias por usar nuestro servicio de cotizaciones! Hemos registrado tu solicitud.`;
-      setDraft((prev) => ({ ...prev, step: "finished" }));
-    }
-
-    // 3. Responder
+    // Pequeño delay artificial para simular que la IA "piensa" antes de calcular la respuesta lógica
+    // Nota: En una app real, esto sucedería después de recibir respuesta del servidor
     setTimeout(() => {
+      if (draft.step === "greeting") {
+        botResponseText = "¡Hola! ¿Qué producto te interesa cotizar hoy?";
+        setDraft((prev) => ({ ...prev, step: "product_selection" }));
+      } else if (draft.step === "product_selection") {
+        botResponseText = `Entendido, anoto ${text}. ¿Cuántas unidades necesitas?`;
+        setDraft((prev) => ({
+          ...prev,
+          items: [{ productName: text, quantity: 0 }],
+          step: "client_data",
+        }));
+      } else if (draft.step === "client_data") {
+        botResponseText = `Perfecto, he registrado tu interés en ${draft.items[0]?.productName || "el producto"}. ¿Podrías proporcionarme tu nombre y correo electrónico?`;
+        setDraft((prev) => ({ ...prev, step: "confirmation" }));
+      } else if (draft.step === "confirmation") {
+        botResponseText = `Gracias por la información. ¿Deseas que te envíe la cotización a tu correo electrónico?`;
+        setDraft((prev) => ({
+          ...prev,
+          step: "finished",
+          isReadyToSubmit: true,
+        }));
+      } else {
+        botResponseText = `¡Gracias por usar nuestro servicio! Hemos registrado tu solicitud.`;
+        setDraft((prev) => ({ ...prev, step: "finished" }));
+      }
+
+      // 3. Responder y desactivar carga
       setMessages((prev) => [
         ...prev,
         {
@@ -60,20 +74,25 @@ export const useBudgetChat = () => {
           text: botResponseText,
         },
       ]);
-    }, 600);
+
+      setIsLoading(false); // IMPORTANTE: Desactivar carga
+    }, 1000); // 1 segundo de delay
   };
 
   const submitBudget = async () => {
-    // AQUÍ ES DONDE CONVIERTES EL CHAT EN UNA PETICIÓN VÁLIDA
     const payload = {
       customer: draft.clientInfo,
       lines: draft.items,
       date: new Date().toISOString(),
     };
-
     console.log("Enviando al backend:", payload);
-    // await axios.post('/api/budgets', payload);
   };
 
-  return { messages, processUserMessage, draft, submitBudget };
+  return {
+    messages,
+    sendMessage: processUserMessage, // ALIAS: La UI espera 'sendMessage', aquí lo conectamos
+    isLoading, // Necesario para la UI
+    draft,
+    submitBudget,
+  };
 };
